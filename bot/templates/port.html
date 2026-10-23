@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>⚓ Порт</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Автоматически сканирует экран на наличие полоски мини-игры и нажимает <strong>E</strong>.
+    </div>
+    <div class="settings-group">
+        <div class="hotkey-container">
+            <div class="hotkey-info">
+                <div class="hotkey-title">⌨️ Хоткей для автобега</div>
+                <div class="hotkey-description">Включает/выключает автоматическое нажатие <strong>Shift+W</strong></div>
+            </div>
+            <input type="text" id="hotkey-input" class="hotkey-input" readonly placeholder="Клавиша..." value="{{ settings.walker_hotkey | default('f5', true) | upper }}">
+        </div>
+
+        <button class="button" id="port-btn" onclick="togglePort()">
+            {{ 'Остановить' if active else 'Запустить' }}
+        </button>
+    </div>
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/hotkey.js') }}"></script>
+<script>
+(function() {
+    window.togglePort = async function() {
+        try {
+            const res = await fetch('/api/port/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ hotkey: window.getSelectedHotkey() })
+            });
+            const data = await res.json();
+            if (data.active !== undefined) {
+                window.updateModuleUI('port-btn', data.active);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.updatePageUI = function(active) {
+        window.updateModuleUI('port-btn', active);
+    };
+
+    window.initPortPage = function() {
+        window.loadModuleLogs('port');
+        const serverStatus = "{{ 'true' if active else 'false' }}";
+        window.updateModuleUI('port-btn', serverStatus === 'true');
+    };
+
+    window.initPortPage();
+})();
+</script>
+{% endblock %}
