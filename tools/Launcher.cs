@@ -136,8 +136,11 @@ static class Program
         ContextMenuStrip menu = new ContextMenuStrip();
         ToolStripMenuItem toggle = new ToolStripMenuItem("Авто-E вкл/выкл (F5)");
         toggle.Click += delegate { AutoE.Toggle(); };
+        ToolStripMenuItem walk = new ToolStripMenuItem("Автохождение к маркеру вкл/выкл (F6)");
+        walk.Click += delegate { Walker.Toggle(); };
         ToolStripMenuItem exit = new ToolStripMenuItem("Выйти из трея");
         menu.Items.Add(toggle);
+        menu.Items.Add(walk);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exit);
         tray.ContextMenuStrip = menu;
@@ -150,6 +153,15 @@ static class Program
         };
         System.Threading.SynchronizationContext ui = new WindowsFormsSynchronizationContext();
         AutoE.Changed += delegate(bool v) { ui.Post(delegate { upd(v); }, null); };
+        Walker.Changed += delegate(bool v)
+        {
+            ui.Post(delegate
+            {
+                walk.Checked = v;
+                try { (v ? System.Media.SystemSounds.Asterisk : System.Media.SystemSounds.Hand).Play(); } catch { }
+                if (v) tray.ShowBalloonTip(1500, "Автохождение включено", "Бот ищет красный маркер, поворачивает камеру и бежит к нему. F6 — выключить.", ToolTipIcon.None);
+            }, null);
+        };
         tray.Text = "BOT [GTA5RP] — Авто-E: выключено (F5)";
         tray.Visible = true;
 
@@ -161,8 +173,10 @@ static class Program
         watch.Start();
 
         AutoE.Start();
+        Walker.Start();
         Application.Run(ctx);
         AutoE.Stop();
+        Walker.Stop();
         tray.Visible = false;
         tray.Dispose();
     }
