@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -21,9 +22,12 @@ static class Program
     const string Magic = "BOTPAY01";
     const string DriverInstaller = "ViGEmBus_1.22.0_x64_x86_arm64.exe";
 
+    [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+
     [STAThread]
     static int Main()
     {
+        try { SetProcessDPIAware(); } catch { }
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         try { return Run(); }
@@ -56,19 +60,35 @@ static class Program
             payloadStart = fs.Length - 32 - payloadLen;
         }
 
-        string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BotGTA5RP");
-        string dir = Path.Combine(root, id);
-        string ready = Path.Combine(dir, ".ready");
+        // BOTGTA5RP_HOME lets tests run in an isolated folder
+        string root = Environment.GetEnvironmentVariable("BOTGTA5RP_HOME");
+        bool isolated = !string.IsNullOrEmpty(root);
+        if (!isolated)
+            root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BotGTA5RP");
 
         Directory.CreateDirectory(root);
         logPath = Path.Combine(root, "launcher.log");
         Log("start, build " + id + ", self=" + self);
+        if (!isolated) KillOld(root);
 
-        string botDir = Path.Combine(dir, "bot");
+        // Reuse an intact copy of this build; otherwise pick a folder we can actually (re)create.
+        // A running bot locks its files, so a busy folder is skipped instead of failing: id, id-1, id-2 ...
+        string dir = null, ready = null, botDir = null;
+        bool needExtract = false;
+        for (int n = 0; n < 20 && dir == null; n++)
+        {
+            string d = Path.Combine(root, n == 0 ? id : id + "-" + n);
+            string r = Path.Combine(d, ".ready");
+            string bd = Path.Combine(d, "bot");
+            if (File.Exists(r) && Intact(bd)) { dir = d; ready = r; botDir = bd; break; }
+            if (!Directory.Exists(d) || TryDelete(d)) { dir = d; ready = r; botDir = bd; needExtract = true; }
+            else Log("folder busy, skipping: " + d);
+        }
+        if (dir == null)
+            throw new IOException("Не удалось подготовить папку для бота. Закройте запущенный бот (main.exe) в Диспетчере задач и запустите снова.");
         string main = Path.Combine(botDir, "main.exe");
 
-        // (re)extract when this build was never unpacked, or an antivirus removed files afterwards
-        if (!File.Exists(ready) || !Intact(botDir))
+        if (needExtract)
         {
             Log("extracting to " + dir);
             Extract(self, payloadStart, payloadLen, root, dir, ready);
@@ -100,12 +120,86 @@ static class Program
                     "• запуск от имени администратора подтверждён\n\n" +
                     "Журнал: " + logPath,
                     "BOT [GTA5RP]", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return 0;
         }
+        if (p == null) return 0;
+
+        RunTray(p);
         return 0;
     }
 
+    // stays in the tray while the bot runs: F5 toggles Auto-E, closing the bot closes this too
+    static void RunTray(Process bot)
+    {
+        NotifyIcon tray = new NotifyIcon();
+        try { tray.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { tray.Icon = SystemIcons.Application; }
+        ContextMenuStrip menu = new ContextMenuStrip();
+        ToolStripMenuItem toggle = new ToolStripMenuItem("Авто-E вкл/выкл (F5)");
+        toggle.Click += delegate { AutoE.Toggle(); };
+        ToolStripMenuItem exit = new ToolStripMenuItem("Выйти из трея");
+        menu.Items.Add(toggle);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(exit);
+        tray.ContextMenuStrip = menu;
+        Action<bool> upd = delegate(bool v)
+        {
+            tray.Text = "BOT [GTA5RP] — Авто-E: " + (v ? "включено" : "выключено") + " (F5)";
+            toggle.Checked = v;
+            try { (v ? System.Media.SystemSounds.Asterisk : System.Media.SystemSounds.Hand).Play(); } catch { }
+            if (v) tray.ShowBalloonTip(1500, "Авто-E включено", "Встаньте к порту: E нажмётся, когда зелёная зона дойдёт до красной линии. F5 — выключить.", ToolTipIcon.None);
+        };
+        System.Threading.SynchronizationContext ui = new WindowsFormsSynchronizationContext();
+        AutoE.Changed += delegate(bool v) { ui.Post(delegate { upd(v); }, null); };
+        tray.Text = "BOT [GTA5RP] — Авто-E: выключено (F5)";
+        tray.Visible = true;
+
+        ApplicationContext ctx = new ApplicationContext();
+        exit.Click += delegate { ctx.ExitThread(); };
+        System.Windows.Forms.Timer watch = new System.Windows.Forms.Timer();
+        watch.Interval = 1500;
+        watch.Tick += delegate { try { if (bot.HasExited) ctx.ExitThread(); } catch { ctx.ExitThread(); } };
+        watch.Start();
+
+        AutoE.Start();
+        Application.Run(ctx);
+        AutoE.Stop();
+        tray.Visible = false;
+        tray.Dispose();
+    }
+
+    // a new copy replaces an older copy of the bot, so there is never a locked port or a half-deleted folder
+    static void KillOld(string root)
+    {
+        try
+        {
+            Process me = Process.GetCurrentProcess();
+            foreach (Process pr in Process.GetProcessesByName(me.ProcessName))
+            {
+                if (pr.Id == me.Id) continue;
+                try { Log("closing an older launcher, pid " + pr.Id); pr.Kill(); pr.WaitForExit(4000); } catch (Exception ex) { Log("could not close pid " + pr.Id + ": " + ex.Message); }
+            }
+            foreach (string name in new string[] { "main", "QtWebEngineProcess" })
+                foreach (Process pr in Process.GetProcessesByName(name))
+                {
+                    try
+                    {
+                        string f = pr.MainModule.FileName;
+                        if (f.StartsWith(root, StringComparison.OrdinalIgnoreCase)) { Log("closing an older " + name + ", pid " + pr.Id); pr.Kill(); pr.WaitForExit(4000); }
+                    }
+                    catch { }
+                }
+        }
+        catch (Exception ex) { Log("KillOld: " + ex.Message); }
+    }
+
+    static bool TryDelete(string d)
+    {
+        try { Directory.Delete(d, true); } catch { }
+        return !Directory.Exists(d);
+    }
+
     static string logPath;
-    static void Log(string s)
+    internal static void Log(string s)
     {
         try { File.AppendAllText(logPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + s + Environment.NewLine); } catch { }
     }
