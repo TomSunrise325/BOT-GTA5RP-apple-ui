@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>🍜 Кулинария</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Автоматически готовит выбранное блюдо, распознавая ингредиенты на экране.
+    </div>
+
+    <div class="settings-group">
+        <div class="input-group">
+            <label>Выберите блюдо:</label>
+            <div class="custom-select" id="dish-select" data-options='{{ recipes | tojson | safe }}' data-selected="{{ settings.selected_dish | default(recipes[0], true) }}">
+                <div class="custom-select-trigger">
+                    {{ settings.selected_dish | default(recipes[0], true) }}
+                </div>
+            </div>
+        </div>
+
+        <button class="button" id="cooking-btn" onclick="toggleCooking()">
+            {{ 'Остановить' if active else 'Запустить' }}
+        </button>
+    </div>
+
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+</div>
+
+<script>
+(function() {
+    var el = document.getElementById('dish-select');
+    var dishSelect = createCustomSelect({
+        id: 'dish-select',
+        selected: el.dataset.selected,
+        options: JSON.parse(el.dataset.options)
+    });
+
+    window.toggleCooking = async function() {
+        try {
+            const res = await fetch('/api/cooking/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ dish: dishSelect.getValue() })
+            });
+            const data = await res.json();
+            if (data.active !== undefined) {
+                window.updateModuleUI('cooking-btn', data.active);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.updatePageUI = function(active) {
+        window.updateModuleUI('cooking-btn', active);
+    };
+
+    window.initCookingPage = function() {
+        window.loadModuleLogs('cooking');
+        const serverStatus = "{{ 'true' if active else 'false' }}";
+        window.updateModuleUI('cooking-btn', serverStatus === 'true');
+    };
+
+    window.initCookingPage();
+})();
+</script>
+{% endblock %}
