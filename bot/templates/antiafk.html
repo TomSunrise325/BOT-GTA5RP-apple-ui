@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card" style="position: relative;">
+    {% if not vgamepad_available %}
+    <div class="driver-gate">
+        <div class="driver-gate-box">
+            <div class="ico-tile"><svg class="ico"><use href="#i-gamepad"/></svg></div>
+            <h2>Драйвер не установлен</h2>
+            <p>Для работы Anti-AFK нужен драйвер <strong>ViGEmBus</strong>.<br>Он позволяет эмулировать виртуальный геймпад.</p>
+            <a href="https://github.com/ViGEm/ViGEmBus/releases/latest" target="_blank" class="button">Скачать ViGEmBus</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <h2>⚙️ Anti-AFK</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Автоматически имитирует активность пользователя, чтобы избежать выхода по бездействию.
+    </div>
+    <div class="settings-group">
+        <div class="input-group">
+            <label>Мин. зажатие: <span id="min_d_v">{{settings.min_delay}}</span>s</label>
+            <input type="range" id="min_delay" min="0.5" max="5" step="0.1" value="{{settings.min_delay}}" oninput="document.getElementById('min_d_v').innerText=this.value">
+        </div>
+        <div class="input-group">
+            <label>Макс. зажатие: <span id="max_d_v">{{settings.max_delay}}</span>s</label>
+            <input type="range" id="max_delay" min="0.5" max="5" step="0.1" value="{{settings.max_delay}}" oninput="document.getElementById('max_d_v').innerText=this.value">
+        </div>
+
+        <div class="input-group">
+            <label>Мин. пауза: <span id="min_p_v">{{settings.min_pause}}</span>s</label>
+            <input type="range" id="min_pause" min="1" max="60" value="{{settings.min_pause}}" oninput="document.getElementById('min_p_v').innerText=this.value">
+        </div>
+        <div class="input-group">
+            <label>Макс. пауза: <span id="max_p_v">{{settings.max_pause}}</span>s</label>
+            <input type="range" id="max_pause" min="1" max="60" value="{{settings.max_pause}}" oninput="document.getElementById('max_p_v').innerText=this.value">
+        </div>
+
+        <button class="button" id="afk-btn" onclick="toggleAntiAFK()">
+            {{ 'Остановить' if active else 'Запустить' }}
+        </button>
+    </div>
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+</div>
+
+<script>
+(function() {
+    window.updatePageUI = function(active) {
+        window.isAfkActive = active;
+        window.updateModuleUI('afk-btn', active);
+    };
+
+    window.toggleAntiAFK = async function() {
+        const settings = {
+            min_delay: parseFloat(document.getElementById('min_delay').value) || 0.5,
+            max_delay: parseFloat(document.getElementById('max_delay').value) || 1.0,
+            min_pause: parseFloat(document.getElementById('min_pause').value) || 1.0,
+            max_pause: parseFloat(document.getElementById('max_pause').value) || 5.0
+        };
+
+        try {
+            const res = await fetch('/api/antiafk/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    active: !window.isAfkActive,
+                    settings: settings
+                })
+            });
+            const data = await res.json();
+            if (data.active !== undefined) {
+                window.updateModuleUI('afk-btn', data.active);
+            }
+            window.updatePageUI(data.active);
+        } catch (err) {
+            console.error("Ошибка Anti-AFK:", err);
+        }
+    };
+
+    const serverStatus = "{{ 'true' if active else 'false' }}";
+    window.updateModuleUI('afk-btn', serverStatus === 'true');
+    window.loadModuleLogs('antiafk');
+})();
+</script>
+{% endblock %}
