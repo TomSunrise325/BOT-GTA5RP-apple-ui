@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <title>BOT [GTA5RP]</title>
+</head>
+<body class="sidebar-closed">
+    <script>try{if(localStorage.getItem("sidebar")!=="closed"&&innerWidth>=900)document.body.classList.add("sidebar-open")}catch(e){}</script>
+    {% block update_overlay %}{% endblock %}
+
+    <!-- SF Symbols-style icon sprite -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+        <symbol id="i-gamepad" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="18" cy="13.7" r=".9" fill="currentColor"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="2.8"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+        <symbol id="i-hammer" viewBox="0 0 24 24"><path d="m15 12-8.4 8.4a2.1 2.1 0 0 1-3-3L12 9"/><path d="m18 15 4-4"/><path d="m21.5 11.5-1.9-1.9a2 2 0 0 1-.6-1.4V7l-2.3-2.3a6 6 0 0 0-4.2-1.8L9 3l.9.8A6.2 6.2 0 0 1 12 8.4V10l2 2h1.2a2 2 0 0 1 1.4.6l1.9 1.9"/></symbol>
+        <symbol id="i-anchor" viewBox="0 0 24 24"><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/></symbol>
+        <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/></symbol>
+        <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></symbol>
+        <symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+        <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3.2"/><path d="M10.5 18.5h3"/></symbol>
+        <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.7V17c0 .6-.5 1-1 1.2-1.2.6-2 2-2 3.8"/><path d="M14 14.7V17c0 .6.5 1 1 1.2 1.2.6 2 2 2 3.8"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+        <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3.2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7.5 15h9"/></symbol>
+        <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M3 6h11M18 6h3M3 12h5M12 12h9M3 18h13M20 18h1"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+        <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.9h.01"/></symbol>
+        <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3.5"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+        <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></symbol>
+        <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+        <symbol id="i-pointer" viewBox="0 0 24 24"><path d="m5 3 14 7-6 2-2 6z"/></symbol>
+        <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+        <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17v4M17 19h4"/></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+        <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+        <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="3"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+        <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3.5"/><path d="M9.5 4v16"/></symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+    </svg>
+
+    <div class="aurora"><i></i><i></i><i></i></div>
+    <div id="particles-js"></div>
+    <audio id="hover-sound" src="{{ url_for('static', filename='wav/hover.wav') }}" preload="auto"></audio>
+    <audio id="click-sound" src="{{ url_for('static', filename='wav/click.wav') }}" preload="auto"></audio>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <div class="titlebar">
+        <div class="titlebar-controls">
+            <button class="titlebar-btn close-btn" onclick="closeWindow()" title="Закрыть" aria-label="Закрыть окно">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>
+            </button>
+            <button class="titlebar-btn minimize-btn" onclick="minimizeWindow()" title="Свернуть" aria-label="Свернуть окно">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 6h8"/></svg>
+            </button>
+        </div>
+        <div class="titlebar-drag-region">
+            <div class="titlebar-title">BOT [GTA5RP]</div>
+        </div>
+        <div class="titlebar-spacer"></div>
+    </div>
+
+    <div class="app-content">
+        <aside class="sidebar" id="sidebar" aria-label="Разделы">
+            <div class="sidebar-header">
+                <button class="burger-btn" onclick="toggleSidebar()" title="Показать или скрыть боковое меню" aria-label="Показать или скрыть боковое меню">
+                    <svg class="ico"><use href="#i-sidebar"/></svg>
+                </button>
+
+            </div>
+            <nav class="nav-links">
+                <div id="nav-indicator" class="nav-indicator"></div>
+                <div class="nav-main-group">
+                    <a href="/index" class="nav-item" data-tooltip="Главная">
+                        <span class="icon"><svg class="ico"><use href="#i-home"/></svg></span>
+                        <span class="text">Главная</span>
+                    </a>
+                    <a href="/antiafk" class="nav-item" data-tooltip="Anti-AFK">
+                        <span class="icon"><svg class="ico"><use href="#i-gamepad"/></svg></span>
+                        <span class="text">Anti-AFK</span>
+                    </a>
+                    <a href="/demorgan" class="nav-item" data-tooltip="Деморган">
+                        <span class="icon"><svg class="ico"><use href="#i-lock"/></svg></span>
+                        <span class="text">Деморган</span>
+                    </a>
+                    <a href="/stroyka" class="nav-item" data-tooltip="Стройка/Шахта">
+                        <span class="icon"><svg class="ico"><use href="#i-hammer"/></svg></span>
+                        <span class="text">Стройка/Шахта</span>
+                    </a>
+                    <a href="/port" class="nav-item" data-tooltip="Порт">
+                        <span class="icon"><svg class="ico"><use href="#i-anchor"/></svg></span>
+                        <span class="text">Порт</span>
+                    </a>
+                    <a href="/cow" class="nav-item" data-tooltip="Коровы">
+                        <span class="icon"><svg class="ico"><use href="#i-leaf"/></svg></span>
+                        <span class="text">Коровы</span>
+                    </a>
+                    <a href="/gym" class="nav-item" data-tooltip="Качалка">
+                        <span class="icon"><svg class="ico"><use href="#i-dumbbell"/></svg></span>
+                        <span class="text">Качалка</span>
+                    </a>
+                    <a href="/cooking" class="nav-item" data-tooltip="Кулинария">
+                        <span class="icon"><svg class="ico"><use href="#i-utensils"/></svg></span>
+                        <span class="text">Кулинария</span>
+                    </a>
+                    <a href="/kpk" class="nav-item" data-tooltip="КПК">
+                        <span class="icon"><svg class="ico"><use href="#i-phone"/></svg></span>
+                        <span class="text">КПК</span>
+                    </a>
+                    <a href="/bonuspoint" class="nav-item" data-tooltip="Bonus Point">
+                        <span class="icon"><svg class="ico"><use href="#i-trophy"/></svg></span>
+                        <span class="text">Bonus Point</span>
+                    </a>
+                    <a href="/keybinds" class="nav-item" data-tooltip="Бинды">
+                        <span class="icon"><svg class="ico"><use href="#i-keyboard"/></svg></span>
+                        <span class="text">Бинды</span>
+                    </a>
+                </div>
+                <div class="nav-main-group">
+                    <a href="https://t.me/XmartVPN_bot" class="nav-item nav-vpn" data-tooltip="XmartVPN" onclick="openVpn(event)">
+                        <span class="icon"><svg class="ico"><use href="#i-shield"/></svg></span>
+                        <span class="text">XmartVPN</span>
+                    </a>
+                    <a href="/settings" class="nav-item settings-item" data-tooltip="Настройки">
+                        <span class="icon"><svg class="ico"><use href="#i-sliders"/></svg></span>
+                        <span class="text">Настройки</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="container">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <div id="ui-settings-data"
+        data-hover-enabled="{{ ui_sounds.switch_hover | tojson }}"
+        data-click-enabled="{{ ui_sounds.switch_click | tojson }}"
+        data-hover-vol="{{ ui_sounds.volume_hover }}"
+        data-click-vol="{{ ui_sounds.volume_click }}"
+        data-background="{{ ui_sounds.background }}"
+        style="display: none;">
+    </div>
+
+    <script>
+        (function() {
+            const dataSource = document.getElementById('ui-settings-data');
+            if (dataSource) {
+                window.UI_CONFIG = {
+                    hoverEnabled: dataSource.getAttribute('data-hover-enabled') === 'true',
+                    clickEnabled: dataSource.getAttribute('data-click-enabled') === 'true',
+                    hoverVol: parseInt(dataSource.getAttribute('data-hover-vol') || 35) / 100,
+                    clickVol: parseInt(dataSource.getAttribute('data-click-vol') || 45) / 100,
+                    background: dataSource.getAttribute('data-background') || 'bot'
+                };
+            }
+        })();
+    </script>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script src="{{ url_for('static', filename='js/drag.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/particles.min.js') }}"></script>
+    <script>
+        window.initParticles = function(backgroundType) {
+            const bg = backgroundType || window.UI_CONFIG?.background || 'bot';
+
+            if (window.particlesJS && window.particlesJS.destroy) {
+                window.particlesJS.destroy();
+            }
+
+            const container = document.getElementById('particles-js');
+            if (container) {
+                container.innerHTML = '';
+            }
+
+            let imageSrc = "static/icons/" + bg + ".ico";
+            if (bg === 'liquid') {
+                imageSrc = [
+                    { src: "static/icons/liquid1.ico", rotation: 0 },
+                    { src: "static/icons/liquid2.ico", rotation: 0.02 }
+                ];
+            } else if (bg === 'chrome') {
+                imageSrc = [
+                    { src: "static/icons/chrome1.ico", rotation: 0 },
+                    { src: "static/icons/chrome2.ico", rotation: 0 },
+                    { src: "static/icons/chrome3.ico", rotation: 0 },
+                    { src: "static/icons/chrome4.ico", rotation: 0 },
+                    { src: "static/icons/chrome5.ico", rotation: 0 },
+                    { src: "static/icons/chrome6.ico", rotation: 0 }
+                ];
+            } else if (bg === 'line') {
+                imageSrc = [
+                    { src: "static/icons/line1.ico", rotation: 0 },
+                    { src: "static/icons/line2.ico", rotation: 0 }
+                ];
+            }
+
+            particlesJS("particles-js", {
+                particles: {
+                    number: { value: 38, density: { enable: true, value_area: 700 } },
+                    color: { value: "#fff" },
+                    shape: {
+                        type: "image",
+                        stroke: { width: 0, color: "#000000" },
+                        image: { src: imageSrc, width: 500, height: 600 }
+                    },
+                    opacity: { value: 0.5, random: true, anim: { enable: false } },
+                    size: { value: 22, random: true, anim: { enable: false } },
+                    line_linked: { enable: false },
+                    move: {
+                        enable: true, speed: 1.1, direction: "bottom",
+                        random: false, straight: false, out_mode: "out", bounce: false
+                    }
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: {
+                        onhover: { enable: false, mode: "bubble" },
+                        onclick: { enable: true, mode: "repulse" },
+                        resize: true
+                    },
+                    modes: { repulse: { distance: 200, duration: 0.4 } }
+                },
+                retina_detect: true
+            });
+        };
+
+        window.initParticles('{{ ui_sounds.background }}');
+    </script>
+</body>
+</html>
