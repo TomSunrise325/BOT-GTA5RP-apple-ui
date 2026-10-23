@@ -1,0 +1,164 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>⚙️ Настройки</h2>
+    <div class="settings-group">
+        <div class="settings-item">
+            <div class="settings-header">
+                <span class="settings-title">
+                    <span class="settings-icon">🔊</span>
+                    Звук наведения на модули
+                </span>
+                <button class="toggle-switch" id="switch-hover" onclick="toggleHover()"></button>
+            </div>
+
+            <div class="slider-container{% if not settings.switch_hover %} hidden{% endif %}" id="hover-slider-container">
+                <div class="slider-row">
+                    <span class="slider-label">Громкость: <span id="hover-value">{{settings.volume_hover}}</span></span>
+                    <div class="slider-wrapper">
+                        <input type="range" id="volume-hover" class="slider" min="0" max="100" value="{{settings.volume_hover}}" oninput="document.getElementById('hover-value').innerText=this.value">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-header">
+                <span class="settings-title">
+                    <span class="settings-icon">🔔</span>
+                    Звук клика по модулям
+                </span>
+                <button class="toggle-switch" id="switch-click" onclick="toggleClick()"></button>
+            </div>
+
+            <div class="slider-container{% if not settings.switch_click %} hidden{% endif %}" id="click-slider-container">
+                <div class="slider-row">
+                    <span class="slider-label">Громкость: <span id="click-value">{{settings.volume_click}}</span></span>
+                    <div class="slider-wrapper">
+                        <input type="range" id="volume-click" class="slider" min="0" max="100" value="{{settings.volume_click}}" oninput="document.getElementById('click-value').innerText=this.value">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-header">
+                <span class="settings-title">
+                    <span class="settings-icon">🖼️</span>
+                    Задний фон
+                </span>
+            </div>
+            <div class="background-options">
+                <div class="bg-option" data-bg="bot">
+                    <div class="bg-preview bot-bg"></div>
+                    <span>BOT</span>
+                </div>
+                <div class="bg-option" data-bg="liquid">
+                    <div class="bg-preview liquid-bg"></div>
+                    <span>Liquid</span>
+                </div>
+                <div class="bg-option" data-bg="chrome">
+                    <div class="bg-preview chrome-bg"></div>
+                    <span>Chrome</span>
+                </div>
+                <div class="bg-option" data-bg="line">
+                    <div class="bg-preview line-bg"></div>
+                    <span>Line</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    let localSettings = JSON.parse('{{ settings | tojson | safe }}');
+    const card = document.querySelector('.card');
+
+    const updateUIConfig = () => {
+        if (window.UI_CONFIG) {
+            window.UI_CONFIG.hoverEnabled = localSettings.switch_hover;
+            window.UI_CONFIG.clickEnabled = localSettings.switch_click;
+            window.UI_CONFIG.hoverVol = localSettings.volume_hover / 100;
+            window.UI_CONFIG.clickVol = localSettings.volume_click / 100;
+            window.UI_CONFIG.background = localSettings.background;
+        }
+    };
+
+    card.addEventListener('click', (e) => {
+        const sw = e.target.closest('.toggle-switch');
+        if (!sw) return;
+
+        const key = sw.id.replace('switch-', 'switch_');
+        localSettings[key] = !localSettings[key];
+        updateUIConfig();
+
+        sw.classList.toggle('active', localSettings[key]);
+        const containerId = sw.id.includes('hover') ? 'hover-slider-container' : 'click-slider-container';
+        document.getElementById(containerId).classList.toggle('hidden', !localSettings[key]);
+
+        saveToServer();
+    }, true);
+
+    card.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('slider')) return;
+
+        const isHover = e.target.id === 'volume-hover';
+        const val = parseInt(e.target.value);
+        const key = isHover ? 'volume_hover' : 'volume_click';
+        const displayId = isHover ? 'hover-value' : 'click-value';
+
+        localSettings[key] = val;
+        document.getElementById(displayId).textContent = val;
+        updateUIConfig();
+    }, true);
+
+    card.addEventListener('change', (e) => {
+        if (e.target.classList.contains('slider')) saveToServer();
+    })
+
+    const saveToServer = () => {
+        updateUIConfig();
+
+        fetch('/api/settings/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(localSettings)
+        }).catch(err => console.error('Ошибка сохранения:', err));
+    };
+
+    document.querySelectorAll('.bg-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const bg = option.dataset.bg;
+            localSettings.background = bg;
+
+            document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+
+            saveToServer();
+
+            if (window.initParticles) {
+                window.initParticles(bg);
+            }
+        });
+    });
+
+    const init = () => {
+        const swHover = document.getElementById('switch-hover');
+        const swClick = document.getElementById('switch-click');
+
+        if(swHover) swHover.classList.toggle('active', localSettings.switch_hover);
+        if(swClick) swClick.classList.toggle('active', localSettings.switch_click);
+
+        document.getElementById('hover-slider-container').classList.toggle('hidden', !localSettings.switch_hover);
+        document.getElementById('click-slider-container').classList.toggle('hidden', !localSettings.switch_click);
+
+        const activeBg = localSettings.background || 'bot';
+        document.querySelectorAll('.bg-option').forEach(o => {
+            o.classList.toggle('active', o.dataset.bg === activeBg);
+        });
+    };
+
+    init();
+})();
+</script>
+{% endblock %}
