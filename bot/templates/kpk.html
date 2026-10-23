@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>📱 КПК</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Автоматически сканирует КПК на наличие нового вызова. При нахождении — кликает и издаёт звуковое оповещение.
+    </div>
+    <div class="settings-group">
+        <div class="hotkey-container">
+            <div class="hotkey-info">
+                <div class="hotkey-title">⌨️ Хоткей запуска</div>
+                <div class="hotkey-description">Включает/выключает сканирование заказов</div>
+            </div>
+            <input type="text" id="hotkey-input" class="hotkey-input" readonly placeholder="Клавиша..."
+                   value="{{ settings.hotkey_kpk | default('F5', true) | upper }}">
+        </div>
+
+        <div class="hotkey-container">
+            <div class="hotkey-info">
+                <div class="hotkey-title">🔊 Звук уведомления</div>
+                <div class="hotkey-description">Выберите звук при нахождении вызова</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-shrink: 0;">
+                <div class="custom-select" id="sound-select" style="width: 160px; margin: 0;">
+                    <div class="custom-select-trigger" id="testSound">
+                        {{ 'Яндекс' if settings.sound_type == 'yandex' else 'Обычный' }}
+                    </div>
+                </div>
+                <button class="button sm tinted" onclick="testSound()">
+                    🔊 Тест
+                </button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Громкость<span id="volume-value">{{ settings.volume | default(100, true) }}</span>%</label>
+            <input type="range" id="volume-slider" min="0" max="100" value="{{ settings.volume | default(100, true) }}" step="1">
+        </div>
+
+        <button class="button" id="kpk-btn" onclick="toggleKpk()">
+            {{ 'Остановить' if active else 'Запустить' }}
+        </button>
+    </div>
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/hotkey.js') }}"></script>
+<script>
+(function() {
+    var currentSoundType = "{{ settings.sound_type | default('normal', true) }}";
+    var currentVolume = "{{ settings.volume | default(100, true) }}";
+    var volumeTimer = null;
+
+    var volumeSlider = document.getElementById('volume-slider');
+    var volumeValue = document.getElementById('volume-value');
+    if (volumeSlider && volumeValue) {
+        volumeSlider.addEventListener('input', function() {
+            currentVolume = parseInt(this.value);
+            volumeValue.textContent = currentVolume;
+            if (volumeTimer) clearTimeout(volumeTimer);
+            volumeTimer = setTimeout(function() {
+                fetch('/api/kpk/volume', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ volume: currentVolume })
+                }).catch(function(e) { console.error(e); });
+            }, 300);
+        });
+    }
+
+    var soundSelect = createCustomSelect({
+        id: 'sound-select',
+        selected: currentSoundType,
+        options: [
+            { value: 'normal', label: 'Обычный' },
+            { value: 'yandex', label: 'Яндекс' }
+        ],
+        onChange: function(val) {
+            currentSoundType = val;
+            updateSound(val);
+        }
+    });
+
+    window.updateSound = async function(soundType) {
+        try {
+            await fetch('/api/kpk/sound', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sound_type: soundType })
+            });
+        } catch (e) {
+            console.error('Ошибка при изменении звука:', e);
+        }
+    };
+
+    window.testSound = async function() {
+        try {
+            await fetch('/api/kpk/test_sound', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sound_type: currentSoundType, volume: currentVolume })
+            });
+        } catch (e) {
+            console.error('Ошибка при тестировании звука:', e);
+        }
+    };
+
+    window.toggleKpk = async function() {
+        try {
+            const res = await fetch('/api/kpk/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ hotkey: window.getSelectedHotkey() })
+            });
+            const data = await res.json();
+            if (data.active !== undefined) {
+                window.updateModuleUI('kpk-btn', data.active);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.updatePageUI = function(active) {
+        window.updateModuleUI('kpk-btn', active);
+    };
+
+    window.initKpkPage = function() {
+        window.loadModuleLogs('kpk');
+        const serverStatus = "{{ 'true' if active else 'false' }}";
+        window.updateModuleUI('kpk-btn', serverStatus === 'true');
+    };
+
+    window.initKpkPage();
+})();
+</script>
+{% endblock %}
