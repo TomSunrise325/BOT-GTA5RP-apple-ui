@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Главная</h2>
+    <p class="lead">Выберите модуль — бот возьмёт рутину на себя. Горячие клавиши и паузы настраиваются на странице каждого модуля.</p>
+
+    <div class="section-label">Модули</div>
+    <div class="module-grid">
+        <a href="/antiafk" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-gamepad"/></svg></span>
+            <div><b>Anti-AFK</b><span class="d">Имитирует активность, чтобы не выкинуло по бездействию</span></div>
+        </a>
+        <a href="/demorgan" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-lock"/></svg></span>
+            <div><b>Деморган</b><span class="d">Находит токаря и швейку, считает время и кликает</span></div>
+        </a>
+        <a href="/stroyka" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-hammer"/></svg></span>
+            <div><b>Стройка / Шахта</b><span class="d">Распознаёт мини-игру и жмёт нужные клавиши</span></div>
+        </a>
+        <a href="/port" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-anchor"/></svg></span>
+            <div><b>Порт</b><span class="d">Ловит полоску мини-игры и нажимает E</span></div>
+        </a>
+        <a href="/cow" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-leaf"/></svg></span>
+            <div><b>Коровы</b><span class="d">Автонажатие A / D по изображению на экране</span></div>
+        </a>
+        <a href="/gym" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-dumbbell"/></svg></span>
+            <div><b>Качалка</b><span class="d">Видит зелёный круг и жмёт пробел, ест по таймеру</span></div>
+        </a>
+        <a href="/cooking" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-utensils"/></svg></span>
+            <div><b>Кулинария</b><span class="d">Готовит выбранное блюдо, узнавая ингредиенты</span></div>
+        </a>
+        <a href="/kpk" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-phone"/></svg></span>
+            <div><b>КПК</b><span class="d">Сканирует вызовы, кликает и подаёт сигнал</span></div>
+        </a>
+        <a href="/bonuspoint" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-trophy"/></svg></span>
+            <div><b>Bonus Point</b><span class="d">Трекер заданий и подсчёт BP</span></div>
+        </a>
+        <a href="/keybinds" data-nav class="module-tile">
+            <span class="glyph"><svg class="ico"><use href="#i-keyboard"/></svg></span>
+            <div><b>Бинды</b><span class="d">Свои сочетания: нажатие, зажатие, повтор</span></div>
+        </a>
+    </div>
+
+    <div class="vpn-banner">
+        <div class="vpn-text">
+            <span class="glyph"><svg class="ico"><use href="#i-shield"/></svg></span>
+            <div><b>XmartVPN</b><span class="d">VPN в Telegram — быстрое подключение в пару касаний</span></div>
+        </div>
+        <a href="https://t.me/XmartVPN_bot" class="vpn-btn" onclick="openVpn(event)">Открыть @XmartVPN_bot <svg class="ico"><use href="#i-arrow"/></svg></a>
+    </div>
+
+    <div class="footer-note">
+        <div class="meta">
+            {% if online|string|trim|first|default('x') in '0123456789' %}<span>Запусков сегодня: <b id="online-val">{{ online }}</b></span>{% endif %}
+        </div>
+        <div class="version-badge">
+            <div class="version-icon">
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+                    <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"></path>
+                </svg>
+            </div>
+            <span class="version-label">v{{ version }}</span>
+        </div>
+    </div>
+    <div class="warning-box warning-wide">⚠️ Использование может нарушать правила сервера. Играйте с умом.</div>
+</div>
+{% endblock %}
