@@ -1,0 +1,598 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>⌨️ Пользовательские бинды</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Создавайте свои бинды с нажатием или зажатием клавиш, настройкой повтора и кулдауна.
+    </div>
+
+    <div class="settings-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:0.5px solid var(--sep)">
+            <h3 style="margin: 0;">Список биндов</h3>
+            <div style="display: flex;">
+                <button class="button sm danger" style="margin-right:10px" onclick="stopAllBinds()">
+                    Остановить все
+                </button>
+                <button class="button sm" onclick="addNewBind()">
+                    Добавить бинд
+                </button>
+            </div>
+        </div>
+
+        <div id="binds-container" class="binds-grid" style="padding:14px">
+        </div>
+    </div>
+
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+
+    <div id="bind-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">✨ Новый бинд</h3>
+            <button class="modal-close-btn" onclick="closeModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="modal-row">
+                <div class="modal-field">
+                    <label>Название:</label>
+                    <input type="text" id="bind-name" placeholder="Например: Авто-еда">
+                </div>
+
+                <div class="modal-field">
+                    <label>Клавиша активации:</label>
+                    <div class="hotkey-capture-box" id="hotkey-capture" tabindex="0">
+                        <span class="hotkey-capture-text" id="hotkey-display">Нажмите клавишу...</span>
+                    </div>
+                    <input type="hidden" id="bind-hotkey" value="">
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Тип действия:</label>
+                <div class="action-type-switch">
+                    <button class="action-type-btn active" data-type="press" onclick="setActionType('press')">
+                        <span class="action-icon">👆</span>
+                        <span>Нажатие</span>
+                    </button>
+                    <button class="action-type-btn" data-type="hold" onclick="setActionType('hold')">
+                        <span class="action-icon">✊</span>
+                        <span>Зажатие</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Клавиши действия:</label>
+                <div class="keys-row">
+                    <div id="selected-keys" class="selected-keys">
+                        <span class="placeholder-text">Клавиши не выбраны</span>
+                    </div>
+                    <div class="key-capture-box" id="key-capture" tabindex="0" title="Добавить клавишу">
+                        <span class="key-capture-plus">+</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="hold-duration-field" class="modal-field" style="display: none;">
+                <label>Время зажатия (сек):</label>
+                <input type="number" id="bind-hold-duration" value="2" min="0.1" max="300" step="0.1">
+            </div>
+
+            <div class="modal-field">
+                <label class="toggle-label">
+                    <span>Повтор:</span>
+                    <button type="button" class="toggle-switch" id="bind-repeat-toggle" onclick="toggleRepeat(this)"></button>
+                </label>
+            </div>
+
+            <div id="cooldown-field" class="modal-field" style="display: none;">
+                <label>Кулдаун между повторами (сек):</label>
+                <input type="number" id="bind-cooldown" value="5" min="0.1" max="600" step="0.1">
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+            <button class="btn-save" onclick="saveBind()">Сохранить</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width:400px">
+            <div class="modal-header">
+                <h3 id="confirm-title">⚠️ Подтверждение</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message" style="text-align:center;font-size:15px;margin:14px 0 8px;color:var(--label)"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeConfirmModal(false)">Отмена</button>
+                <button class="btn-save danger-fill" onclick="closeConfirmModal(true)">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width:400px">
+            <div class="modal-header">
+                <h3 id="alert-title">ℹ️ Внимание</h3>
+            </div>
+            <div class="modal-body">
+                <p id="alert-message" style="text-align:center;font-size:15px;margin:14px 0 8px;color:var(--label)"></p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn-save" onclick="closeAlertModal()">ОК</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var savedBinds = JSON.parse('{{ settings.binds | default([]) | tojson }}');
+    var editingBindId = null;
+    var tempBind = null;
+    var bindIdCounter = (savedBinds && savedBinds.length > 0) ? Math.max(...savedBinds.map(b => b.id || 0)) + 1 : 1;
+    var activeBinds = new Set();
+    var confirmResolve = null;
+    var alertResolve = null;
+    var isCapturingHotkey = false;
+    var isCapturingKey = false;
+
+    window.showConfirm = function(message, title) {
+        return new Promise(function(resolve) {
+            confirmResolve = resolve;
+            document.getElementById('confirm-title').textContent = title || '⚠️ Подтверждение';
+            document.getElementById('confirm-message').textContent = message;
+            document.getElementById('confirm-modal').style.display = 'flex';
+        });
+    };
+
+    window.closeConfirmModal = function(result) {
+        document.getElementById('confirm-modal').style.display = 'none';
+        if (confirmResolve) {
+            confirmResolve(result);
+            confirmResolve = null;
+        }
+    };
+
+    window.showAlert = function(message, title) {
+        return new Promise(function(resolve) {
+            alertResolve = resolve;
+            document.getElementById('alert-title').textContent = title || 'ℹ️ Внимание';
+            document.getElementById('alert-message').textContent = message;
+            document.getElementById('alert-modal').style.display = 'flex';
+        });
+    };
+
+    window.closeAlertModal = function() {
+        document.getElementById('alert-modal').style.display = 'none';
+        if (alertResolve) {
+            alertResolve();
+            alertResolve = null;
+        }
+    };
+
+    function codeToKeyName(code) {
+        if (code.startsWith('Key')) return code.replace('Key', '').toLowerCase();
+        if (code.startsWith('Digit')) return code.replace('Digit', '');
+        if (code.startsWith('Numpad')) return 'numpad' + code.replace('Numpad', '').toLowerCase();
+        var map = {
+            'Space': 'space', 'ShiftLeft': 'shift', 'ShiftRight': 'shift',
+            'ControlLeft': 'ctrl', 'ControlRight': 'ctrl',
+            'AltLeft': 'alt', 'AltRight': 'alt',
+            'Tab': 'tab', 'CapsLock': 'capslock',
+            'Enter': 'enter', 'Backspace': 'backspace',
+            'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
+            'Escape': 'escape', 'Delete': 'delete', 'Insert': 'insert',
+            'Home': 'home', 'End': 'end', 'PageUp': 'pageup', 'PageDown': 'pagedown',
+            'Minus': '-', 'Equal': '=', 'BracketLeft': '[', 'BracketRight': ']',
+            'Semicolon': ';', 'Quote': "'", 'Backquote': '`',
+            'Backslash': '\\', 'Comma': ',', 'Period': '.', 'Slash': '/',
+            'NumpadAdd': 'numpadadd', 'NumpadSubtract': 'numpadsubtract',
+            'NumpadMultiply': 'numpadmultiply', 'NumpadDivide': 'numpaddivide',
+            'NumpadEnter': 'numpadenter', 'NumpadDecimal': 'numpaddecimal'
+        };
+        if (map[code]) return map[code];
+        if (code.startsWith('F') && code.length <= 3) return code.toLowerCase();
+        return code.toLowerCase();
+    }
+
+    function keyDisplayName(key) {
+        var names = {
+            'space': 'SPACE', 'shift': 'SHIFT', 'ctrl': 'CTRL', 'alt': 'ALT',
+            'tab': 'TAB', 'enter': 'ENTER', 'backspace': 'BKSP',
+            'capslock': 'CAPS', 'escape': 'ESC', 'delete': 'DEL',
+            'insert': 'INS', 'home': 'HOME', 'end': 'END',
+            'pageup': 'PGUP', 'pagedown': 'PGDN',
+            'up': '↑', 'down': '↓', 'left': '←', 'right': '→',
+            'numpadadd': 'NUM+', 'numpadsubtract': 'NUM-',
+            'numpadmultiply': 'NUM*', 'numpaddivide': 'NUM/',
+            'numpadenter': 'NUM↵', 'numpaddecimal': 'NUM.'
+        };
+        if (names[key]) return names[key];
+        if (key.startsWith('numpad')) return 'NUM' + key.replace('numpad', '').toUpperCase();
+        return key.toUpperCase();
+    }
+
+    var hotkeyBox = document.getElementById('hotkey-capture');
+    if (hotkeyBox) {
+        hotkeyBox.addEventListener('click', function() {
+            isCapturingHotkey = true;
+            this.classList.add('capturing');
+            document.getElementById('hotkey-display').textContent = 'Нажмите клавишу...';
+        });
+
+        hotkeyBox.addEventListener('keydown', function(e) {
+            if (!isCapturingHotkey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var key = codeToKeyName(e.code);
+            if (key === 'escape') {
+                isCapturingHotkey = false;
+                this.classList.remove('capturing');
+                if (!tempBind || !tempBind.hotkey) {
+                    document.getElementById('hotkey-display').textContent = 'Нажмите клавишу...';
+                } else {
+                    document.getElementById('hotkey-display').textContent = keyDisplayName(tempBind.hotkey);
+                }
+                return;
+            }
+            if (tempBind) tempBind.hotkey = key;
+            document.getElementById('bind-hotkey').value = key;
+            document.getElementById('hotkey-display').textContent = keyDisplayName(key);
+            isCapturingHotkey = false;
+            this.classList.remove('capturing');
+            this.blur();
+        });
+
+        hotkeyBox.addEventListener('blur', function() {
+            if (isCapturingHotkey) {
+                isCapturingHotkey = false;
+                this.classList.remove('capturing');
+                if (!tempBind || !tempBind.hotkey) {
+                    document.getElementById('hotkey-display').textContent = 'Нажмите клавишу...';
+                } else {
+                    document.getElementById('hotkey-display').textContent = keyDisplayName(tempBind.hotkey);
+                }
+            }
+        });
+    }
+
+    var keyBox = document.getElementById('key-capture');
+    if (keyBox) {
+        keyBox.addEventListener('click', function() {
+            isCapturingKey = true;
+            this.classList.add('capturing');
+            this.querySelector('.key-capture-plus').textContent = '⌨';
+        });
+
+        keyBox.addEventListener('keydown', function(e) {
+            if (!isCapturingKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var key = codeToKeyName(e.code);
+            if (key === 'escape') {
+                isCapturingKey = false;
+                this.classList.remove('capturing');
+                this.querySelector('.key-capture-plus').textContent = '+';
+                return;
+            }
+            if (tempBind) {
+                if (!tempBind.keys.includes(key)) {
+                    tempBind.keys.push(key);
+                    updateSelectedKeysDisplay();
+                }
+            }
+            isCapturingKey = false;
+            this.classList.remove('capturing');
+            this.querySelector('.key-capture-plus').textContent = '+';
+            this.blur();
+        });
+
+        keyBox.addEventListener('blur', function() {
+            if (isCapturingKey) {
+                isCapturingKey = false;
+                this.classList.remove('capturing');
+                this.querySelector('.key-capture-plus').textContent = '+';
+            }
+        });
+    }
+
+    window.setActionType = function(type) {
+        if (!tempBind) return;
+        tempBind.action_type = type;
+        document.querySelectorAll('.action-type-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-type') === type);
+        });
+        document.getElementById('hold-duration-field').style.display = (type === 'hold') ? 'block' : 'none';
+    };
+
+    window.toggleRepeat = function(btn) {
+        btn.classList.toggle('active');
+        var repeat = btn.classList.contains('active');
+        if (tempBind) tempBind.repeat = repeat;
+        document.getElementById('cooldown-field').style.display = repeat ? 'block' : 'none';
+    };
+
+    function openModal(isNew) {
+        var modal = document.getElementById('bind-modal');
+        var title = document.getElementById('modal-title');
+        var card = document.querySelector('.card');
+
+        if (isNew) {
+            title.textContent = '✨ Новый бинд';
+            tempBind = { id: bindIdCounter++, name: '', hotkey: '', keys: [], action_type: 'press', hold_duration: 2, cooldown: 5, repeat: false, isNew: true };
+        } else {
+            title.textContent = '✏️ Редактирование бинда';
+        }
+
+        document.getElementById('bind-name').value = tempBind.name || '';
+        document.getElementById('bind-hotkey').value = tempBind.hotkey || '';
+
+        if (tempBind.hotkey) {
+            document.getElementById('hotkey-display').textContent = keyDisplayName(tempBind.hotkey);
+        } else {
+            document.getElementById('hotkey-display').textContent = 'Нажмите клавишу...';
+        }
+
+        var actionType = tempBind.action_type || 'press';
+        document.querySelectorAll('.action-type-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-type') === actionType);
+        });
+        document.getElementById('hold-duration-field').style.display = (actionType === 'hold') ? 'block' : 'none';
+        document.getElementById('bind-hold-duration').value = tempBind.hold_duration || 2;
+
+        var repeatBtn = document.getElementById('bind-repeat-toggle');
+        if (tempBind.repeat) { repeatBtn.classList.add('active'); } else { repeatBtn.classList.remove('active'); }
+        document.getElementById('cooldown-field').style.display = tempBind.repeat ? 'block' : 'none';
+        document.getElementById('bind-cooldown').value = tempBind.cooldown || 5;
+
+        updateSelectedKeysDisplay();
+
+        modal.style.display = 'flex';
+        if (card) card.classList.add('modal-active');
+        fetch('/api/keybinds/suspend', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({suspended:true})});
+    }
+
+    window.closeModal = function() {
+        var modal = document.getElementById('bind-modal');
+        var card = document.querySelector('.card');
+        modal.style.display = 'none';
+        if (card) card.classList.remove('modal-active');
+        fetch('/api/keybinds/suspend', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({suspended:false})});
+        editingBindId = null;
+        tempBind = null;
+        isCapturingHotkey = false;
+        isCapturingKey = false;
+    };
+
+    window.addNewBind = function() {
+        tempBind = { id: bindIdCounter++, name: '', hotkey: '', keys: [], action_type: 'press', hold_duration: 2, cooldown: 5, repeat: false, isNew: true };
+        editingBindId = tempBind.id;
+        openModal(true);
+    };
+
+    window.editBind = function(id) {
+        var bind = savedBinds.find(function(b) { return b.id === id; });
+        if (bind) {
+            tempBind = JSON.parse(JSON.stringify(bind));
+            tempBind.action_type = tempBind.action_type || 'hold';
+            tempBind.hold_duration = tempBind.hold_duration || 2;
+            tempBind.cooldown = tempBind.cooldown || 5;
+            tempBind.repeat = tempBind.repeat !== undefined ? tempBind.repeat : false;
+            tempBind.isNew = false;
+            editingBindId = id;
+            openModal(false);
+        }
+    };
+
+    function updateSelectedKeysDisplay() {
+        var container = document.getElementById('selected-keys');
+        if (!container || !tempBind) return;
+
+        if (tempBind.keys.length > 0) {
+            container.innerHTML = tempBind.keys.map(function(k) {
+                return '<span class="key-tag">' + keyDisplayName(k) +
+                    '<span class="key-tag-remove" onclick="removeKey(\'' + k + '\')">✕</span></span>';
+            }).join('');
+        } else {
+            container.innerHTML = '<span class="placeholder-text">Клавиши не выбраны</span>';
+        }
+    }
+
+    window.removeKey = function(key) {
+        if (!tempBind) return;
+        tempBind.keys = tempBind.keys.filter(function(k) { return k !== key; });
+        updateSelectedKeysDisplay();
+    };
+
+    window.saveBind = async function() {
+        if (!tempBind) return;
+
+        tempBind.name = document.getElementById('bind-name').value.trim();
+        tempBind.hotkey = document.getElementById('bind-hotkey').value;
+        tempBind.hold_duration = parseFloat(document.getElementById('bind-hold-duration').value) || 2;
+        tempBind.repeat = document.getElementById('bind-repeat-toggle').classList.contains('active');
+        tempBind.cooldown = parseFloat(document.getElementById('bind-cooldown').value) || 5;
+
+        if (!tempBind.name) {
+            showAlert('Введите название бинда');
+            return;
+        }
+
+        if (!tempBind.hotkey) {
+            showAlert('Назначьте клавишу активации');
+            return;
+        }
+
+        var duplicate = savedBinds.find(function(b) {
+            return b.id !== tempBind.id && b.hotkey === tempBind.hotkey;
+        });
+        if (duplicate) {
+            showAlert('Клавиша ' + keyDisplayName(tempBind.hotkey) + ' уже используется в бинде "' + duplicate.name + '"');
+            return;
+        }
+
+        if (tempBind.keys.length === 0) {
+            showAlert('Добавьте хотя бы одну клавишу действия');
+            return;
+        }
+
+        if (tempBind.isNew) {
+            delete tempBind.isNew;
+            savedBinds.push(tempBind);
+        } else {
+            var index = savedBinds.findIndex(function(b) { return b.id === tempBind.id; });
+            if (index !== -1) {
+                delete tempBind.isNew;
+                savedBinds[index] = tempBind;
+            }
+        }
+
+        try {
+            var res = await fetch('/api/keybinds/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ binds: savedBinds })
+            });
+            var data = await res.json();
+            if (data.status === 'ok') {
+                closeModal();
+                renderBinds();
+            } else {
+                showAlert('Ошибка сохранения', '❌ Ошибка');
+            }
+        } catch (err) {
+            console.error("Ошибка сохранения:", err);
+            showAlert('Ошибка сохранения бинда', '❌ Ошибка');
+        }
+    };
+
+    window.deleteBind = async function(id) {
+        var confirmed = await showConfirm('Вы уверены, что хотите удалить этот бинд?', '🗑️ Удаление бинда');
+        if (!confirmed) return;
+
+        savedBinds = savedBinds.filter(function(b) { return b.id !== id; });
+
+        try {
+            await fetch('/api/keybinds/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ binds: savedBinds })
+            });
+        } catch (err) {
+            console.error("Ошибка удаления:", err);
+        }
+
+        renderBinds();
+    };
+
+    window.testBind = async function(id) {
+        try {
+            var res = await fetch('/api/keybinds/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: id })
+            });
+            var data = await res.json();
+            if (data.active) {
+                activeBinds.add(id);
+            } else {
+                activeBinds.delete(id);
+            }
+            renderBinds();
+        } catch (err) {
+            console.error("Ошибка теста:", err);
+        }
+    };
+
+    window.stopAllBinds = async function() {
+        try {
+            await fetch('/api/keybinds/stop_all', { method: 'POST' });
+            activeBinds.clear();
+            renderBinds();
+        } catch (err) {
+            console.error("Ошибка остановки:", err);
+        }
+    };
+
+    function renderBinds() {
+        var container = document.getElementById('binds-container');
+        if (!container) return;
+
+        var html = '';
+
+        savedBinds.forEach(function(bind) {
+            var isActive = activeBinds.has(bind.id);
+            var actionType = bind.action_type || 'hold';
+            var actionLabel = actionType === 'hold'
+                ? '✊ Зажатие ' + (bind.hold_duration || 2) + ' сек'
+                : '👆 Нажатие';
+            var repeatLabel = bind.repeat
+                ? '🔄 Повтор (КД ' + (bind.cooldown || 5) + ' сек)'
+                : '';
+
+            html += '<div class="bind-row ' + (isActive ? 'active' : '') + '">' +
+                '<div class="bind-row-info">' +
+                    '<div class="bind-row-name">' + (bind.name || 'Без названия') + '</div>' +
+                    '<div class="bind-row-details">' +
+                        '<span class="bind-detail-tag action">' + actionLabel + '</span>' +
+                        (repeatLabel ? '<span class="bind-detail-tag repeat">' + repeatLabel + '</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="bind-row-hotkey">' + (bind.hotkey ? keyDisplayName(bind.hotkey) : '—') + '</div>' +
+                '<div class="bind-row-keys">' +
+                    (bind.keys || []).map(function(k) { return '<span class="key-tag">' + keyDisplayName(k) + '</span>'; }).join('') +
+                '</div>' +
+                '<div class="bind-row-actions">' +
+                    '<button class="icon-btn ' + (isActive ? 'stop' : 'play') + '" onclick="testBind(' + bind.id + ')" title="' + (isActive ? 'Остановить' : 'Запустить') + '">' +
+                        (isActive ? '⏹' : '▶') +
+                    '</button>' +
+                    '<button class="icon-btn" onclick="editBind(' + bind.id + ')" title="Редактировать">✏️</button>' +
+                    '<button class="icon-btn delete" onclick="deleteBind(' + bind.id + ')" title="Удалить">🗑️</button>' +
+                '</div>' +
+            '</div>';
+        });
+
+        if (savedBinds.length === 0) {
+            html = '<div class="empty-state">' +
+                '<div class="empty-state-icon">⌨️</div>' +
+                '<p>Нет сохранённых биндов</p>' +
+                '<p style="font-size: 13px; margin-top: 5px;">Нажмите "Добавить бинд" чтобы создать первый</p>' +
+            '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    renderBinds();
+
+    var modal = document.getElementById('bind-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    fetch('/api/keybinds/active')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            (data.active || []).forEach(function(id) {
+                activeBinds.add(id);
+            });
+            renderBinds();
+        });
+
+    window.loadModuleLogs('keybinds');
+})();
+</script>
+{% endblock %}
