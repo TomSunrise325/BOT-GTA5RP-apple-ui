@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>⛏️ Стройка | Шахта</h2>
+    <div class="info-box">
+        ℹ️ <strong>Функция:</strong> Автоматически распознаёт изображения мини-игры на экране и нажимает соответствующие клавиши (<strong>E</strong>, <strong>Y</strong>, <strong>F</strong>, <strong>H</strong>).
+    </div>
+
+    <div class="settings-group">
+        <div class="hotkey-container">
+            <div class="hotkey-info">
+                <div class="hotkey-title">⌨️ Хоткей для автобега</div>
+                <div class="hotkey-description">Включает/выключает автоматическое нажатие <strong>Shift+W</strong></div>
+            </div>
+            <input type="text" id="hotkey-input" class="hotkey-input" readonly placeholder="Клавиша..." value="{{ settings.walker_hotkey | default('f5', true) | upper }}">
+        </div>
+
+        <button class="button" id="stroyka-btn" onclick="toggleStroyka()">
+            {{ 'Остановить' if active else 'Запустить' }}
+        </button>
+    </div>
+
+    <h2>📋 Логи</h2>
+    <div style="position: relative;">
+        <div id="log-container"></div>
+        <button onclick="sendLogsToTelegram(event)" class="floating-send-btn" title="Скопировать логи"><svg class="ico"><use href="#i-copy"/></svg></button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/hotkey.js') }}"></script>
+<script>
+(function() {
+    window.toggleStroyka = async function() {
+        const hotkeyInput = document.getElementById('hotkey-input');
+
+        try {
+            const res = await fetch('/api/stroyka/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    walker_hotkey: hotkeyInput ? hotkeyInput.value.toLowerCase() : 'f5'
+                })
+            });
+            const data = await res.json();
+            if (data.active !== undefined) {
+                window.updateModuleUI('stroyka-btn', data.active);
+                if (data.counter !== undefined) {
+                    document.getElementById('counter-value').textContent = data.counter;
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.updatePageUI = function(active) {
+        window.updateModuleUI('stroyka-btn', active);
+    };
+
+    let counterInterval;
+    function startCounterUpdate() {
+        if (counterInterval) clearInterval(counterInterval);
+        counterInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/api/stroyka/counter');
+                const data = await res.json();
+                if (data.counter !== undefined) {
+                    document.getElementById('counter-value').textContent = data.counter;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }, 1000);
+    }
+
+    window.initStroykaPage = function() {
+        window.loadModuleLogs('stroyka');
+        const serverStatus = "{{ 'true' if active else 'false' }}";
+        window.updateModuleUI('stroyka-btn', serverStatus === 'true');
+        if (serverStatus === 'true') {
+            startCounterUpdate();
+        }
+    };
+
+    window.initStroykaPage();
+})();
+</script>
+{% endblock %}
