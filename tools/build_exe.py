@@ -5,7 +5,7 @@ work = pathlib.Path(sys.argv[1]).resolve()
 stage = work / "stage"
 src = work / "bot-src" / "bot"
 tools = work / "_tools"
-out = work / "out"
+out = work / (sys.argv[2] if len(sys.argv) > 2 else "out")   # a running copy locks its exe: build elsewhere if needed
 out.mkdir(exist_ok=True)
 
 # 1) overlay the redesigned UI on the full bundle
@@ -37,7 +37,7 @@ cmd = [csc, "/nologo", "/target:winexe", "/optimize+", "/codepage:65001", f"/out
 cmd.append(f"/win32manifest:{tools / 'app.manifest'}")   # launcher asks for admin once; main.exe requires it too
 if icon.exists():
     cmd.append(f"/win32icon:{icon}")
-cmd.append(str(tools / "Launcher.cs"))
+cmd += [str(tools / "Launcher.cs"), str(tools / "AutoE.cs")]
 r = subprocess.run(cmd, capture_output=True, text=True)
 print(r.stdout, r.stderr)
 if r.returncode != 0 and icon.exists():       # retry without icon if csc rejects it
