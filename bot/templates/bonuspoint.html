@@ -1,0 +1,244 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+    <h2>🏆 BP Tracker</h2>
+    <div class="bp-header">
+        <div class="bp-total" id="bp-total">BP: 0</div>
+        <div class="bp-options">
+            <label class="checkbox-label">
+                <input type="checkbox" id="vip-checkbox" class="checkbox-input">
+                <span>Gold / Platinum VIP</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="x2-checkbox" class="checkbox-input">
+                <span>x2 Сервер</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="search-input" class="input-text" placeholder="Поиск по заданиям...">
+    </div>
+
+    <div class="tasks-container" id="tasks-container"></div>
+
+    <div class="bp-buttons">
+        <button class="button tinted" id="btn-show-add">Добавить</button>
+        <button class="button danger" id="btn-show-del">Удалить</button>
+        <button class="button secondary" id="btn-clear">Сбросить</button>
+    </div>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Новое задание</h3>
+            <input type="text" id="add-name" placeholder="Текст задания" class="input-text">
+            <input type="text" id="add-bp" placeholder="BP (base/vip), например 2/4" class="input-text">
+            <button class="button" id="btn-add-confirm">Добавить</button>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Удалить задание</h3>
+            <div class="custom-select" id="delete-select">
+                <div class="custom-select-trigger">Выберите задание</div>
+                <div class="custom-select-options"></div>
+            </div>
+            <button class="button danger" id="btn-del-confirm">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let localState = {
+        tasks: [],
+        vip: false,
+        server_x2: false
+    };
+
+    const tasksContainer = document.getElementById('tasks-container');
+    const bpTotalDisplay = document.getElementById('bp-total');
+    const vipCheck = document.getElementById('vip-checkbox');
+    const x2Check = document.getElementById('x2-checkbox');
+    const searchInput = document.getElementById('search-input');
+
+    const renderTasks = () => {
+        if (!tasksContainer) return;
+        tasksContainer.innerHTML = '';
+
+        const query = searchInput.value.toLowerCase();
+
+        localState.tasks.forEach((task, index) => {
+            if (query && !task.name.toLowerCase().includes(query)) return;
+
+            const taskItem = document.createElement('div');
+            taskItem.className = 'task-item';
+
+            const baseBP = localState.vip ? task.vip : task.base;
+            const displayBP = localState.server_x2 ? baseBP * 2 : baseBP;
+
+            taskItem.innerHTML = `
+                <label class="task-label">
+                    <input type="checkbox" class="checkbox-input" data-index="${index}" ${task.checked ? 'checked' : ''}>
+                    <span class="task-name">${task.name}</span>
+                    <span class="task-bp">${displayBP} BP</span>
+                </label>
+            `;
+            tasksContainer.appendChild(taskItem);
+        });
+        updateTotalBP();
+    };
+
+    const updateTotalBP = () => {
+        let total = 0;
+        localState.tasks.forEach(task => {
+            if (task.checked) {
+                let amount = localState.vip ? task.vip : task.base;
+                if (localState.server_x2) amount *= 2;
+                total += amount;
+            }
+        });
+        bpTotalDisplay.textContent = `BP: ${total}`;
+    };
+
+    const loadAllData = async () => {
+        try {
+            const [stateRes, tasksRes] = await Promise.all([
+                fetch('/api/bp/get_state'),
+                fetch('/api/bp/get_tasks')
+            ]);
+            const stateData = await stateRes.json();
+            const tasksData = await tasksRes.json();
+
+            localState.vip = stateData.vip;
+            localState.server_x2 = stateData.server_x2;
+            localState.tasks = tasksData;
+
+            vipCheck.checked = localState.vip;
+            x2Check.checked = localState.server_x2;
+
+            renderTasks();
+        } catch (e) {
+            console.error("Ошибка загрузки данных BP:", e);
+        }
+    };
+
+    const card = document.querySelector('.card');
+
+    card.addEventListener('change', async (e) => {
+        if (e.target.id === 'vip-checkbox') {
+            localState.vip = e.target.checked;
+            await fetch('/api/bp/toggle_vip', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({vip: localState.vip})
+            });
+            renderTasks();
+        }
+
+        if (e.target.id === 'x2-checkbox') {
+            localState.server_x2 = e.target.checked;
+            await fetch('/api/bp/toggle_x2', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({x2: localState.server_x2})
+            });
+            renderTasks();
+        }
+
+        if (e.target.type === 'checkbox' && e.target.dataset.index !== undefined) {
+            const idx = e.target.dataset.index;
+            localState.tasks[idx].checked = e.target.checked;
+            updateTotalBP();
+            fetch('/api/bp/toggle_task', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({index: parseInt(idx), checked: e.target.checked})
+            });
+        }
+    });
+
+    card.addEventListener('input', (e) => {
+        if (e.target.id === 'search-input') renderTasks();
+    });
+
+    card.addEventListener('click', async (e) => {
+        if (e.target.id === 'btn-show-add') document.getElementById('add-modal').style.display = 'block';
+        if (e.target.id === 'btn-show-del') {
+            const select = document.getElementById('delete-select');
+            const optionsContainer = select.querySelector('.custom-select-options');
+            const trigger = select.querySelector('.custom-select-trigger');
+            optionsContainer.innerHTML = localState.tasks.map((t, i) =>
+                `<div class="custom-select-option" data-value="${i}">${t.name}</div>`
+            ).join('');
+            trigger.textContent = 'Выберите задание';
+            trigger.dataset.value = '';
+            select.classList.remove('open');
+            optionsContainer.querySelectorAll('.custom-select-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    optionsContainer.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    trigger.textContent = opt.textContent;
+                    trigger.dataset.value = opt.dataset.value;
+                    select.classList.remove('open');
+                });
+            });
+            document.getElementById('delete-modal').style.display = 'block';
+        }
+
+        if (e.target.classList.contains('close-modal')) {
+            document.getElementById('add-modal').style.display = 'none';
+            document.getElementById('delete-modal').style.display = 'none';
+        }
+
+        if (e.target.classList.contains('custom-select-trigger')) {
+            const sel = e.target.closest('.custom-select');
+            sel.classList.toggle('open');
+            return;
+        }
+
+        document.querySelectorAll('.custom-select.open').forEach(sel => {
+            if (!sel.contains(e.target)) sel.classList.remove('open');
+        });
+
+        if (e.target.id === 'btn-clear') {
+            await fetch('/api/bp/clear_checked', { method: 'POST' });
+            loadAllData();
+        }
+
+        if (e.target.id === 'btn-add-confirm') {
+            const name = document.getElementById('add-name').value;
+            const bp = document.getElementById('add-bp').value;
+            if (!name || !bp.includes('/')) return alert('Ошибка формата!');
+
+            await fetch('/api/bp/add_task', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name, bp: bp})
+            });
+            document.getElementById('add-modal').style.display = 'none';
+            loadAllData();
+        }
+
+        if (e.target.id === 'btn-del-confirm') {
+            const trigger = document.querySelector('#delete-select .custom-select-trigger');
+            const idx = trigger ? trigger.dataset.value : '';
+            if (idx === '' || idx === undefined) return;
+            await fetch('/api/bp/delete_task', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({index: parseInt(idx)})
+            });
+            document.getElementById('delete-modal').style.display = 'none';
+            loadAllData();
+        }
+    });
+    loadAllData();
+
+})();
+</script>
+
+{% endblock %}
