@@ -1,0 +1,7 @@
+stage/
+out/
+orig/
+_tools/libs/
+__pycache__/
+*.pyc
+
