@@ -37,7 +37,7 @@ cmd = [csc, "/nologo", "/target:winexe", "/optimize+", "/codepage:65001", f"/out
 cmd.append(f"/win32manifest:{tools / 'app.manifest'}")   # launcher asks for admin once; main.exe requires it too
 if icon.exists():
     cmd.append(f"/win32icon:{icon}")
-cmd += [str(tools / "Launcher.cs"), str(tools / "AutoE.cs")]
+cmd += [str(tools / n) for n in ("Launcher.cs", "AutoE.cs", "KeyGlyph.cs", "Walker.cs")]
 r = subprocess.run(cmd, capture_output=True, text=True)
 print(r.stdout, r.stderr)
 if r.returncode != 0 and icon.exists():       # retry without icon if csc rejects it
